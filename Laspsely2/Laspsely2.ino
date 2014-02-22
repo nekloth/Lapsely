@@ -1,22 +1,52 @@
 #include <LedControl.h>
 
+
+/* ****** NOTES ****************************************************************************************************************
+
+
+-- 22FEB2014
+Aujourd'hui, j'ai connecté l'interrupteur pour indiqué si on est en mode SELECTION (choix de la durée) ou TIMELAPSE (on commande
+l'appareil).
+
+Il est important que l'interrupteur soit connecté à +3.3V/+5 dans une position, et SURTOUT à la masse pour l'autre position. 
+
+Sinon, cela crée des faux signaux, et ... ça CLIGNOTE !!
+
+
+
+******************************************************************************************************************************** */
+
+
+
+
+
+
+
 /* ********** GLOBAL *************** */
 
 /* MISC */
-#define ANTIBOUNCE 200
-#define VALEURMINI 2
+#define ANTIBOUNCE 170
+#define VALEURMINI 5
 #define VALEURMAXI 899
 #define PASRAPIDE 10
-#define DUREEENCLENCHEE 1 
+#define DUREEENCLENCHEE 1
+#define DELAIS_AFFICHAGE_GO 2000
 // Le déclenchement sera d'une seconde
 
 
-const int buttonUP = 2;
-const int buttonDOWN = 3;
+const int buttonUP = 2;              //Port pour le bouton+ 
+const int buttonDOWN = 3;            //Port pour le bouton-
+const int switchLETSGO = 4;          //Port pour le switch enclencheur
 
 const int  debounceTime = 50;          // the time in milliseconds required for the switch to be stable
 const int  fastIncrement = 500;       // increment faster after this many  milliseconds
-int count = 0;                         // count decrements every tenth of a second until reaches 0
+//int count = 0;                         // count decrements every tenth of a second until reaches 0
+
+
+int a = (int)random(0,8);     //Utilisé pour le RANDOM en mode déclenchement
+int b = (int)random(0,8);     //Utilisé pour le RANDOM en mode déclenchement
+long uneColonne;
+long uneLigne;
 
 int valeurIntervalle = VALEURMINI; //La valeur sélectionnée par l'utilisateur
 
@@ -29,13 +59,17 @@ LedControl lc= LedControl(12,11,10, 1); //DataIn, Clock, Load
 #define STATUS_TIMELAPSE 1
 #define STATUS_ERROR 2
 
+
 int statusSession = STATUS_SELECTION;
+
 
 /*  0 = Mode de sélection de la durée
     1 = Mode de TimeLapse !
    99 = Mode erreur 
 */
 
+boolean nouveauDeclenchement = true;
+long heureDeclenchement;
 
 
 /* ************* <GESTION DE L'AFFICHAGE> ************************** */
@@ -43,6 +77,7 @@ int statusSession = STATUS_SELECTION;
 #define CHAR_ERROR -2
 #define CHAR_INPROGRESS -1
 #define CHAR_ZERO_DIX -10
+#define CHAR_GO -3
 
 //L'alphabet
 const static byte myAlphabet[56][8]={
@@ -60,48 +95,23 @@ const static byte myAlphabet[56][8]={
 	{0x20,0x20,0x20,0x20,0x20,0x00,0x00,0x00},          //10                           	                --11
 	{0xE0,0x20,0xE0,0x80,0xE0,0x00,0x00,0x00},          //20                            	                --12
 	{0xE0,0x20,0xE0,0x20,0xE0,0x00,0x00,0x00},          //30						--13
-	{0xA0,0xA0,0xE0,0x20,0x20,0x00,0x00,0x00},          //40						--15
-	{0xE0,0x80,0xE0,0x20,0xE0,0x00,0x00,0x00},          //50						--16
-	{0xE0,0x80,0xE0,0xA0,0xE0,0x00,0x00,0x00},          //60						--17
-	{0xE0,0x20,0x20,0x20,0x20,0x00,0x00,0x00},          //70						--18
-	{0xE0,0xA0,0xE0,0xA0,0xE0,0x00,0x00,0x00},          //80						--19
-	{0xE0,0xA0,0xE0,0x20,0xE0,0x00,0x00,0x00},          //90						--20
-	{0x00,0x00,0x00,0x00,0x00,0x00,0x80,0x00},          //100						--21
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xA0,0x00},          //200						--22
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xA8,0x00},          //300						--23
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x00},          //400						--24
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x40},          //500						--25
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x50},          //600						--26
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x54},          //700						--27
-	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x55},          //800						--28
-        {0x60,0xFF,0x81,0x99,0x99,0x81,0xFF,0x00},          //INPROGRESS					--29
-        {0x7E,0x81,0xA5,0x81,0x99,0xA5,0x81,0x7E},          //ERROR						--30
-	{0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00},          //Cinq-1						--31
-	{0x00,0x00,0x18,0x18,0x18,0x18,0x00,0x00},          //Cinq-2						--32
-	{0x00,0x3C,0x20,0x3C,0x04,0x04,0x3C,0x00},          //Cinq-3						--33
-	{0x3E,0x20,0x20,0x3C,0x02,0x02,0x02,0x3C},          //Cinq-4						--34
-	{0x00,0x00,0x00,0x08,0x08,0x00,0x00,0x00},          //Quatre-1						--35
-	{0x00,0x00,0x18,0x18,0x08,0x00,0x00,0x00},          //Quatre-2						--36
-	{0x00,0x24,0x24,0x3C,0x04,0x04,0x00,0x00},          //Quatre-3						--37
-	{0x22,0x22,0x22,0x22,0x3E,0x02,0x02,0x02},          //Quatre-4						--38
-	{0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00},          //Trois-1						--39
-	{0x00,0x00,0x18,0x08,0x18,0x18,0x00,0x00},          //Trois-2						--40
-	{0x00,0x38,0x04,0x38,0x04,0x04,0x38,0x00},          //Trois-3						--41
-	{0x7C,0x02,0x02,0x3C,0x02,0x02,0x02,0x7C},          //Trois-4						--42
-	{0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x00},          //Deux-1						--43
-	{0x00,0x00,0x18,0x08,0x18,0x18,0x00,0x00},          //Deux-2						--44
-	{0x00,0x38,0x04,0x18,0x20,0x3C,0x00,0x00},          //Deux-3						--45
-	{0x3C,0x02,0x02,0x0C,0x10,0x20,0x20,0x3E},          //Deux-4						--46
-	{0x00,0x00,0x00,0x08,0x08,0x00,0x00,0x00},          //Un-1						--47
-	{0x00,0x00,0x18,0x08,0x08,0x00,0x00,0x00},          //Un-2						--48
-	{0x00,0x00,0x08,0x18,0x08,0x08,0x1C,0x00},          //Un-3						--49
-	{0x08,0x18,0x08,0x08,0x08,0x08,0x08,0x1C},          //Un-4						--50
-	{0x00,0x00,0x00,0x14,0x14,0x00,0x00,0x00},          //Go-1						--51
-	{0x00,0x00,0x36,0x36,0x36,0x00,0x00,0x00},          //Go-2						--52
-	{0x00,0x00,0x22,0x55,0x22,0x00,0x00,0x00},          //Go-3						--53
-	{0x00,0x62,0x85,0xB5,0x95,0x62,0x00,0x00},          //Go-4						--54
-	{0x00,0x00,0x00,0x66,0x66,0x00,0x00,0x00},          //WAIT-1						--55
-	{0x00,0x00,0x00,0xDB,0xDB,0x00,0x00,0x00}           //WAIT-2						--56
+	{0xA0,0xA0,0xE0,0x20,0x20,0x00,0x00,0x00},          //40						--14
+	{0xE0,0x80,0xE0,0x20,0xE0,0x00,0x00,0x00},          //50						--15
+	{0xE0,0x80,0xE0,0xA0,0xE0,0x00,0x00,0x00},          //60						--16
+	{0xE0,0x20,0x20,0x20,0x20,0x00,0x00,0x00},          //70						--16
+	{0xE0,0xA0,0xE0,0xA0,0xE0,0x00,0x00,0x00},          //80						--18
+	{0xE0,0xA0,0xE0,0x20,0xE0,0x00,0x00,0x00},          //90						--19
+	{0x00,0x00,0x00,0x00,0x00,0x00,0x80,0x00},          //100						--20
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xA0,0x00},          //200						--21
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xA8,0x00},          //300						--22
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x00},          //400						--23
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x40},          //500						--24
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x50},          //600						--25
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x54},          //700						--26
+	{0x00,0x00,0x00,0x00,0x00,0x00,0xAA,0x55},          //800						--27
+        {0x60,0xFF,0x81,0x99,0x99,0x81,0xFF,0x00},          //INPROGRESS					--28
+        {0x7E,0x81,0xA5,0x81,0x99,0xA5,0x81,0x7E},          //ERROR						--29
+        {0x00,0x62,0x85,0xB5,0x95,0x62,0x00,0x00}           //Go                                                --30
 };
 
 
@@ -119,7 +129,9 @@ int getNumPattern(int input){
 		case 100: return 20; break;case 200: return 21; break;case 300: return 22; break;case 400: return 23; break;
 		case 500: return 24; break;case 600: return 25; break;case 700: return 26; break;case 800: return 27; break;
 
-		case CHAR_INPROGRESS: return 28; break;case CHAR_ERROR: default: return 29; break;
+		case CHAR_INPROGRESS: return 28; break;
+                case CHAR_GO: return 30; break;
+                case CHAR_ERROR: default: return 29; break;
 	}
 }  
 
@@ -131,6 +143,11 @@ void printChar(byte leCar[]) {
 
 void printValue(int theValue) {
   byte afficheMoiCa[8]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  
+  if(theValue==CHAR_ERROR || theValue==CHAR_INPROGRESS || theValue==CHAR_GO) {
+    for (int i=0; i<8;i++) {afficheMoiCa[i] |= myAlphabet[getNumPattern(theValue)][i];}
+    printChar(afficheMoiCa); return;
+  }
 
   //La valeur demandée n'existe pas, on ne peut pas l'afficher, on affiche le caractère ERROR
   if (theValue>899) { 
@@ -174,65 +191,56 @@ void printValue(int theValue) {
 
 /* ************* <SETUP, on initialise tout ce dont on a besoin !> **************** */
 void setup() {
-  lc.shutdown(0,false);     //On sort le LEDMATRIX de l'hibernation
-  lc.setIntensity(0, 0);    //De 0 à 15 (le deuxième paramètre)
-  lc.clearDisplay(0);       //On efface l'écran
-  Serial.begin(9600);       //Pour le debug
+  lc.shutdown(0,false);                 //On sort le LEDMATRIX de l'hibernation
+  lc.setIntensity(0, 0);                //De 0 à 15 (le deuxième paramètre)
+  lc.clearDisplay(0);                   //On efface l'écran
+  Serial.begin(9600);                   //Pour le debug
   
   //Si le bouton TIMELAPSE est enclenché, on passe en ERREUR
-  //if ( .... ) statusSession = STATUS_ERROR;  
-  pinMode(buttonUP, INPUT);
-  pinMode(buttonDOWN, INPUT);
-  
+  pinMode(buttonUP, INPUT);            //Pour le bouton+
+  pinMode(buttonDOWN, INPUT);          //Pour le bouton-
+  pinMode(switchLETSGO, INPUT);        //Pour le switch enclenchement
+  if(digitalRead(switchLETSGO)==HIGH) statusSession = STATUS_ERROR;
+
 }
 /* ************* </SETUP, on initialise tout ce dont on a besoin !> **************** */
 
 
-/* ** Bouton de selection de temps ** */
+/* ** Bouton de selection de temps ************************************************* */
 void pressUP() {if (valeurIntervalle+1 <= VALEURMAXI) {valeurIntervalle++;}}
-
-void pressQUICKUP() {
-  if (valeurIntervalle+PASRAPIDE <= VALEURMAXI) {valeurIntervalle+=PASRAPIDE;} else {valeurIntervalle=VALEURMAXI;}
-}
-
+void pressQUICKUP() {if (valeurIntervalle+PASRAPIDE <= VALEURMAXI) {valeurIntervalle+=PASRAPIDE;} else {valeurIntervalle=VALEURMAXI;}}
 void pressDOWN() {if (valeurIntervalle-1 >= VALEURMINI) {valeurIntervalle--;}}
-
-void pressQUICKDOWN() {
-   if (valeurIntervalle-PASRAPIDE >= VALEURMINI) {valeurIntervalle-=PASRAPIDE;} else {valeurIntervalle=VALEURMINI;}
-}
+void pressQUICKDOWN() {if (valeurIntervalle-PASRAPIDE >= VALEURMINI) {valeurIntervalle-=PASRAPIDE;} else {valeurIntervalle=VALEURMINI;}}
 /* ********** */
 
 
-long switchTime_UP()
-{
-  static unsigned long startTime = 0;  // the time the switch state change was first detected
-  static boolean state;                // the current state of the switch
-
-  if(digitalRead(buttonUP) != state) // check to see if the switch has changed state
+long switchTime_UP() {
+  static unsigned long startTime = 0;
+  static boolean state;
+  if(digitalRead(buttonUP) != state)
   {
-    state = ! state;       // yes, invert the state
-    startTime = millis();  // store the time
+    state = ! state;
+    startTime = millis();
   }
-  if( state == HIGH)
-    return millis() - startTime;   // switch pushed, return time in milliseconds
+  if( state == HIGH) 
+    return millis() - startTime;   
   else
-    return 0; // return 0 if the switch is not pushed (in the HIGH state);
+    return 0;
 }
 
-long switchTime_DOWN()
-{
-  static unsigned long startTime = 0;  // the time the switch state change was first detected
-  static boolean state;                // the current state of the switch
+long switchTime_DOWN() {
+  static unsigned long startTime = 0;
+  static boolean state;
 
-  if(digitalRead(buttonDOWN) != state) // check to see if the switch has changed state
+  if(digitalRead(buttonDOWN) != state)
   {
-    state = ! state;       // yes, invert the state
-    startTime = millis();  // store the time
+    state = ! state;
+    startTime = millis();
   }
   if( state == HIGH)
-    return millis() - startTime;   // switch pushed, return time in milliseconds
+    return millis() - startTime;
   else
-    return 0; // return 0 if the switch is not pushed (in the HIGH state);
+    return 0;
 }
 
 /* ********** <MODE SELECTION> ********** */
@@ -255,7 +263,43 @@ void sessionSELECTION () {
 
 /* ********** <MODE TIMELAPSE> ********** */
 void sessionTIMELAPSE () {
-  printValue(CHAR_INPROGRESS);    
+  
+  if (nouveauDeclenchement) {
+    nouveauDeclenchement = false;
+    printValue(CHAR_GO);
+    delay(DELAIS_AFFICHAGE_GO);
+    heureDeclenchement = millis();
+    lc.clearDisplay(0);
+  } else {
+    
+    uneColonne = random(0,8);
+    while (a == (int)uneColonne) {
+      uneColonne = random(0,8);
+    }
+    a = uneColonne;
+    
+    uneLigne = random(0,8);
+    while (b == (int)uneLigne) {
+      uneLigne = random(0,8);
+    }
+    b = uneLigne;
+    
+    lc.clearDisplay(0);
+    lc.setLed(0,(int)uneColonne,(int)uneLigne,true);
+    delay(500);
+    
+    if (millis()-heureDeclenchement>=valeurIntervalle*1000) {
+      //ON DECLENCHE
+      lc.clearDisplay(0);
+      printValue(CHAR_INPROGRESS);
+      delay(1000);
+      heureDeclenchement = millis(); 
+    }
+
+  } 
+  
+  
+  
 }
 /* ********** </MODE TIMELAPSE> ********** */
 
@@ -263,12 +307,7 @@ void sessionTIMELAPSE () {
 
 /* ********** <MODE ERROR> ********** */
 void sessionERROR() {
-   /*
-   if (DECLENCHEUR DESACTIVE) {
-      statusSession = STATUS_SELECTION;
-      return;
-   }
-   */
+
   printValue(CHAR_ERROR);  
 }
 /* ********** </MODE ERROR> ********** */
@@ -277,16 +316,18 @@ void sessionERROR() {
 
 /* ************* <LOOP, C'est là que tout se passe> **************** */
 void loop() {
-  /*
-   if (statusSession != STATUS_ERROR && interrupteurEnclencheur=1) {
-       statusSession = STATUS_TIMELAPSE;
-   }
-   if (statusSession != STATUS_ERROR && interrupteurEnclencheur=0) {
-       statusSession = STATUS_SELECTION;
-   }
-   */
+
+
+ if (digitalRead(switchLETSGO) == LOW) { 
+    statusSession = STATUS_SELECTION;
+    if (!nouveauDeclenchement) nouveauDeclenchement=true;
+  }
+
   
- 
+  if (statusSession != STATUS_ERROR && digitalRead(switchLETSGO) == HIGH) {
+    statusSession = STATUS_TIMELAPSE;
+  } 
+  
  
  
  
@@ -304,7 +345,6 @@ void loop() {
 
 }
 /* ************* </LOOP, C'est là que tout se passe> **************** */
-
 
 
 
