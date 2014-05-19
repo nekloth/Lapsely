@@ -3,7 +3,7 @@
 /* ****** NOTES ****************************************************************************************************************
 
 -- 22FEB2014
-Aujourd'hui, j'ai connecté l'interrupteur pour indiqué si on est en mode SELECTION (choix de la durée) ou TIMELAPSE (on commande
+Aujourd'hui, j'ai connecté l'interrupteur pour indiquer si on est en mode SELECTION (choix de la durée) ou TIMELAPSE (on commande
 l'appareil).
 
 Il est important que l'interrupteur soit connecté à +3.3V/+5 dans une position, et SURTOUT à la masse pour l'autre position. 
