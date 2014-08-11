@@ -10,7 +10,6 @@ Il est important que l'interrupteur soit connecté à +3.3V/+5 dans une position
 
 Sinon, cela crée des faux signaux, et ... ça CLIGNOTE !!
 
-
 -- 
 
 ******************************************************************************************************************************** */
@@ -75,12 +74,15 @@ const int  fastIncrement = 500;       // increment faster after this many  milli
 //Délais entre deux prises de vue (initialisé au mini, défini par l'utilisateur)
 int valeurIntervalle = VALEURMINI; //La valeur sélectionnée par l'utilisateur
 
+
 //INITialisation de l'afficheur
 LedControl lc= LedControl(12,11,10, 1); //DataIn, Clock, Load
+
 
 // Variables pour une interruption possible pendant le déclenchement
 boolean nouveauDeclenchement = true;
 long heureDeclenchement;
+
 
 // Variables pour l'affichage d'un pixel aléatoire
 int a = (int)random(0,8);
@@ -90,16 +92,10 @@ long uneLigne;
 int c = 0; //NON UTILISE POUR LE MOMENT (le but ... if (c%4==0), affiche la LED, sinon ... rien (pour divisé par 4 le nombre de LED affichées au total)
 
 
-/*
-  ___   __  __ _      _                      
- / _ \ / _|/ _(_)    | |                     
-/ /_\ \ |_| |_ _  ___| |__   __ _  __ _  ___ 
-|  _  |  _|  _| |/ __| '_ \ / _` |/ _` |/ _ \  _____ _____ _____ _____ _____
-| | | | | | | | | (__| | | | (_| | (_| |  __/ |_____|_____|_____|_____|_____|
-\_| |_/_| |_| |_|\___|_| |_|\__,_|\__, |\___|
-                                   __/ |     
-                                  |___/     
-*/
+
+
+/* *** <Definition du jeu de caractères > *** */
+
 
 // Les caractères spéciaux
 #define CHAR_ERROR -2
@@ -107,6 +103,7 @@ int c = 0; //NON UTILISE POUR LE MOMENT (le but ... if (c%4==0), affiche la LED,
 #define CHAR_ZERO_DIX -10
 #define CHAR_GO -3
 #define CHAR_BLANK -4
+
 
 //L'alphabet
 const static byte myAlphabet[56][8]={
@@ -245,6 +242,7 @@ void pressQUICKDOWN() {if (valeurIntervalle-PASRAPIDE >= VALEURMINI) {valeurInte
 /* ********** */
 
 
+/* ********** <On appuie sur le bouton UP> ********** */
 long switchTime_UP() {
   static unsigned long startTime = 0;
   static boolean state;
@@ -258,7 +256,11 @@ long switchTime_UP() {
   else
     return 0;
 }
+/* ********** </On appuie sur le bouton UP> ********** */
 
+
+
+/* ********** <On appuie sur le bouton DOWN> ********** */
 long switchTime_DOWN() {
   static unsigned long startTime = 0;
   static boolean state;
@@ -273,6 +275,11 @@ long switchTime_DOWN() {
   else
     return 0;
 }
+/* ********** </On appuie sur le bouton DOWN> ********** */
+
+
+
+
 
 /* ********** <MODE SELECTION> ********** */
 void sessionSELECTION () {
@@ -287,6 +294,9 @@ void sessionSELECTION () {
     else if ( duration_DOWN > debounceTime) {pressDOWN();delay(ANTIBOUNCE);}
 }
 /* ********** </MODE SELECTION> ********** */
+
+
+
 
 
 
@@ -330,11 +340,20 @@ void sessionTIMELAPSE () {
 
 
 
+
+
+
+
 /* ********** <MODE ERROR> ********** */
 void sessionERROR() {
   printValue(CHAR_ERROR);  
 }
 /* ********** </MODE ERROR> ********** */
+
+
+
+
+
 
 
 /* ************* <LOOP, C'est là que tout se passe> **************** */
