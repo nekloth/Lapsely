@@ -2,6 +2,9 @@
 
 /* ****** NOTES ****************************************************************************************************************
 
+-- 151AUG2014
+Quelques ajustements suite à la mise en boite
+
 -- 22FEB2014
 Aujourd'hui, j'ai connecté l'interrupteur pour indiquer si on est en mode SELECTION (choix de la durée) ou TIMELAPSE (on commande
 l'appareil).
@@ -61,7 +64,7 @@ int statusSession = STATUS_SELECTION;
 const int buttonUP = 2;              //Port pour le bouton+ 
 const int buttonDOWN = 3;            //Port pour le bouton-
 const int switchLETSGO = 4;          //Port pour le switch enclencheur
-const int relais = 5;				 //Pour pour le relais
+const int relais = 8;				 //Pour pour le relais
 
 
 /* *** SNIPPET FOR LONGPRESS *** */
@@ -220,7 +223,7 @@ void printValue(int theValue) {
 /* ************* <SETUP, on initialise tout ce dont on a besoin !> **************** */
 void setup() {
   lc.shutdown(0,false);                 //On sort le LEDMATRIX de l'hibernation
-  lc.setIntensity(0, 0);                //De 0 à 15 (le deuxième paramètre)
+  lc.setIntensity(0, 5);                //De 0 à 15 (le deuxième paramètre)
   lc.clearDisplay(0);                   //On efface l'écran
   Serial.begin(9600);                   //Pour le debug
   
@@ -326,12 +329,16 @@ void sessionTIMELAPSE () {
     lc.clearDisplay(0);
     lc.setLed(0,(int)uneColonne,(int)uneLigne,true);
     delay(500);
+    lc.clearDisplay(0);
+    delay(500);
     
-    if (millis()-heureDeclenchement>=valeurIntervalle*1000) {
+    if (millis()-heureDeclenchement>=(valeurIntervalle-1)*1000) {
       //ON DECLENCHE
       lc.clearDisplay(0);
       printValue(CHAR_INPROGRESS);
+      digitalWrite(relais,HIGH);
       delay(1000);
+      digitalWrite(relais,LOW);
       heureDeclenchement = millis(); 
     }
   }   
